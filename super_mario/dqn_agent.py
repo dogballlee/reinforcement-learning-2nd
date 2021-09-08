@@ -1,17 +1,17 @@
 import math
-
 import torch
 from torch import save, FloatTensor, LongTensor
 from torch.autograd import Variable
 from torch.optim import Adam
 import numpy as np
-from super_mario.common import ReplayMemory, Transition
-from super_mario.model import DQNModel
+from common import ReplayMemory, Transition
+from model import DQNModel
 
 
-class DQNAgent():
-    def __init__(self, env, buffer_capacity, epsilon_start, epsilon_final, epsilon_decay, lr,
+class DQNAgent:
+    def __init__(self, env, batch_size, buffer_capacity, epsilon_start, epsilon_final, epsilon_decay, lr,
                  initial_learning, gamma, target_update_frequency):
+        self.batch_size = batch_size
         self.replay_mem = ReplayMemory(buffer_capacity)
         self.epsilon_start = epsilon_start
         self.epsilon_final = epsilon_final
@@ -27,7 +27,9 @@ class DQNAgent():
         self.optimizer = Adam(self.model.parameters(), lr=lr)
 
     def update_epsilon(self, episode_idx):
-        self.epsilon = self.epsilon_final + (self.epsilon_start - self.epsilon_final) * math.exp(-1 * ((episode_idx + 1) / self.epsilon_decay))
+        self.epsilon = self.epsilon_final\
+                       + (self.epsilon_start - self.epsilon_final) \
+                       * math.exp(-1 * ((episode_idx + 1) / self.epsilon_decay))
         return self.epsilon
 
     def act(self, state, episode_idx):
@@ -58,7 +60,7 @@ class DQNAgent():
         done = Variable(FloatTensor(batch.done)).to(self.device)
 
         q_values = self.model(state)
-        next_q_values = self.target_net(next_state)
+        next_q_values = self.target_model(next_state)
 
         q_value = q_values.gather(1, action.unsqueeze(-1)).squeeze(-1)
         next_q_value = next_q_values.max(1)[0]
@@ -67,4 +69,3 @@ class DQNAgent():
         loss = (q_value - expected_q_value.detach()).pow(2)
         loss = loss.mean()
         loss.backward()
-
